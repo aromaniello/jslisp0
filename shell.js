@@ -16,4 +16,8 @@ $(function () {
 		$("#prompt-inner").focus();
 	});
 
+	$("body").click(function () {
+		$("#prompt-inner").focus();
+	});
+
 });

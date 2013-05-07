@@ -1,13 +1,3 @@
-if (typeof Object.create !== 'function') {
-	Object.create = function (o) {
-		var F = function () {};
-		F.prototype = o;
-		return new F();
-	};
-}
-
-// var CLConsole = {};
-
 var CL = {};
 
 // base object for others to inherit from
@@ -33,20 +23,10 @@ CL.CLObject = {
 	name: function () {
 		return "CLObject";
 	}
+	// to string
 }
 
-// need to add CLObject as prototype
-/*
-CL.CLFunction = {
-	is_function: function () {
-		return true;
-	},
-	type: function () {
-		return "CLFunction";
-	}
-}
-*/
-
+// prototype for function objects
 var CLF = Object.create(CL.CLObject);
 CLF.is_function = function () { return true; }; // remove ; if works
 CLF.type = function () { return "CLFunction"; };
@@ -60,6 +40,8 @@ CL.CLNumber = {
 		return "CLNumber";
 	}
 }
+
+CL.toplevel = [];
 
 function displayObject(obj) {
 	console.log("Displaying object properties:");
@@ -94,35 +76,29 @@ CL.symbols = {}
 
 CL.createSymbol = function (symbol_name) {
 	if (!CL.symbols.hasOwnProperty(symbol_name)) {
-		// symbol does not already exist
+		// symbol does not yet exist
 		
-		/*
-		CL.symbols[symbol_name] = { // make it inherit from a CL object
-			"name": symbol_name,
-			"package": "pckg",
-			"property_list": "plist",
-			"function": "func", // will point to a function object
-			is_symbol: function () {
-				return true;
-			}
-		}
-		*/
-		
-		// maybe should move all these into a closure
+		var sym_name = symbol_name;
+		var sym_package = "pckg";
+		var sym_plist = "plist";
+		var sym_function = "func";
+
 		var sym = Object.create(CL.CLSymbol);
-		sym["name"] = symbol_name; // might be better to use other syntax? like sym.name
-		sym["package"] = "pckg";
-		sym["property_list"] = "plist";
-		sym["function"] = "func";
-		sym.is_symbol = function () {
-			return true;
-		}
+
+		sym.name = function () { return sym_name };
+		sym.pckg = function () { return sym_package }; //check if problems with reserved keyword
+		sym.property_list = function () { return sym_plist };
+		sym.func = function () { return sym_function };
+		sym.is_symbol = function () { return true };
+		sym.toString = function () { return "CLSymbol[" + sym_name + "]" };
+
 		CL.symbols[symbol_name] = sym;
 		return sym;
 	}
 	else {
 		// symbol already exists
 		console.log("The symbol already exists: " + symbol_name);
+		return CL.symbols[symbol_name];
 	}
 }
 
@@ -136,29 +112,41 @@ CL.createFunction = function () {
 	var func = Objec.create(CL.CLFunction);
 }
 
-CL.printList = function(cons) {
-	console.log("printing list...");
+CL.printList = function (cons) {
+	console.log(CL.listToString(cons));
+}
+
+CL.listToString = function listToString(cons) {
+	var str = "";
 	if (cons.is_cons()) {
-		console.log("Input is a cons cell.");
 		var current_cons = cons;
 		var its = 0;
+		str += "("
 		while (true) {
-			//displayObject(cons);
 			if (current_cons.is_nil()) {
-				console.log("Nil reached.");
+				str += ")";
 				break;
-			} else if (its > 20) {
+			} else if (its > 200) { // in case there is no nil
 				console.log("Reached max iterations: " + its);
 				break;
 			} else {
-				console.log("List element: " + current_cons.car().type() + " " + current_cons.car().name);
+				if (current_cons.car().is_cons()) {
+					str += listToString(current_cons.car());
+				} else {
+					if (str.substring(str.length-1) === "(") {
+						str += current_cons.car().toString();
+					} else {
+						str += " " + current_cons.car().toString();		
+					}
+				}
 				current_cons = current_cons.cdr();
 			}
-			its++;
+			its += 1;
 		}
+		return str;
 	} else {
-		console.log("Error: argument to printList is not a cons cell.");
-		return false;
+		console.log("Error: argument to listToString is not a cons cell.");
+		return "";
 	}
 }
 
@@ -186,20 +174,11 @@ CL.eval = function() {
 
 }
 
-/*
-CL.nil = {
-	is_nil: function () {
-		return true;
-	}
-}
-*/
-
 // NIL
 var n = Object.create(CL.CLObject);
 n.is_nil = function () { return true };
 n.name = function () { return "nil" };
 CL.nil = n;
-
 CL.symbols["nil"] = CL.nil;
 
 CL.is_nil = function (obj) {
@@ -214,6 +193,7 @@ CL.is_not_nil = function (obj) {
 }
 
 CL.cons = function (first, second) {
+
 	var a = first;
 	var b = second;
 
@@ -232,28 +212,38 @@ CL.cons = function (first, second) {
 
 	return c;
 
-	/*
-	return {
-		car: function () {
-			return a;
-		},
-		cdr: function () {
-			return b;
-		},
-		is_cons: function () {
-			return true;
-		}
-	}
-	*/
 }
 
 CL.findSymbol = function (sym) {
 	if (CL.symbols.hasOwnProperty(sym)) {
-		//console.log("Symbol found: " + sym);
 		return CL.symbols[sym];
 	}
 	else {
 		console.log("Symbol not found: " + sym);
+	}
+}
+
+CL.createBuffer = function (input) {
+
+	var buffer = input; // copy or reference?
+
+	return {
+		consume: function () {
+			var c = buffer.substr(0,1); // get first character from buffer
+			buffer = buffer.substring(1); // remove first character from buffer
+			//console.log(buffer);
+			return c;
+		},
+		is_empty: function () {
+			return buffer === ""; // or buffer is not a string, or add check before
+		},
+		contents: function () {
+			return buffer;
+		},
+		// should find better solution
+		prepend: function(str) {
+			buffer = str + buffer;
+		}
 	}
 }
 
@@ -274,27 +264,36 @@ CL.createSymbol("lambda");
 CL.createSymbol("if");
 CL.createSymbol("setf");
 
-function extract(string) { // add as method to string
-	return string.substring(0,1);
+CL.parse = function (input) {
+	var buffer = CL.createBuffer(input);
+	return CL.parseString(buffer);
 }
 
-CL.parse = function parse(input) {
+CL.parseString = function parseString(buffer) {
+	 console.log("parseString called with buffer: " + buffer.contents());
+
 	var building = "none"
 	var token = ""
-	var list_level = 0;
 	var first_cons = CL.nil;
 	var current_cons = CL.nil;
+	var parsing_list = false;
 
 	var parse_number = /^\d+$/
 	var parse_letter = /^[a-z]$/i
 	var parse_operators = /^[\+\-*\/=]$/
 
-	for (var i=0; i < input.length; i++) {
-		var current_char = input.substring(i,i+1); // extract a single character
+	var i; //?
+	for (i = 0; i < 200; i++) { // can do while(true), but limiting iterations just in case for now
+		//var current_char = input.substring(i,i+1); // extract a single character
+		if (buffer.is_empty()) {
+			console.log("the buffer run out");
+			break;
+		} else {
+			var current_char = buffer.consume();	
+		}
 
-		// if the character is a number
+		// if the character is a number [0-9]
 		if (parse_number.test(current_char)) {
-			//console.log("Number matched: " + current_char);
 			if (building === "none") {
 				building = "number";
 				token = current_char;
@@ -306,75 +305,126 @@ CL.parse = function parse(input) {
 				token += current_char;
 			}
 		}
-		// if the character is a letter
+
+		// if the character is a letter [a-zA-Z]
 		else if (parse_letter.test(current_char)) {
-			//console.log("Letter matched: " + current_char);
 			if (building === "none") {
+				// start building new symbol
 				building = "symbol";
 				token = current_char;
-				
-				var cons = CL.cons(CL.nil,CL.nil);
-				current_cons.setCdr(cons);
-				current_cons = cons;
-			}
-			else if (building === "symbol") {
+
+			} else if (building === "symbol") {
+				// continue building symbol
 				token += current_char;
+			} else {
+				// error when building symbol
+				console.log("Unexpected letter \'" + current_char + "\' found when building: " + building);
+				break;
 			}
 		}
-		// if the character is an operator
+
+		// if the character is an operator [+-*/]
 		else if (parse_operators.test(current_char)) {
-			//console.log("Operator matched: " + current_char);
 			if (building === "none") {
-				console.log("Parsed operator: " + current_char);
 				var symbol = CL.findSymbol(current_char);
-				console.log("Symbol object found: " + symbol["name"]);
 			}
 			else {
 				console.log("Unexpected character: " + current_char);
 				break;
 			}
 		}
-		// if the character is a left parentheses
+
+		// if the character is a left parentheses (
 		else if (current_char === "(") {
-			console.log("Left parentheses matched: " + current_char);
-			if (building === "none") {
-				list_level++;
-				first_cons = CL.cons(CL.nil,CL.nil);
-				current_cons = first_cons;
+			if (building === "none" && !parsing_list) {
+				// begin new list
+				parsing_list = true;
+				
+
+			} else if (building === "none" && parsing_list) {
+				//console.log("nested list found");
+				//var remaining = input.substring(i);
+				//console.log("remaining substring: " + remaining);
+
+				//var a = parseString(remaining);
+				//current_cons.setCar(a.list_head);
+				console.log("Before recourse:");
+				CL.printList(first_cons);
+				console.log(current_cons.car().name());
+				buffer.prepend("("); //does it still work without this?
+				//console.log("starting new list");
+				//console.log(current_cons.car().name());
+				var cons = CL.cons(CL.nil, CL.nil);
+				current_cons.setCdr(cons);
+				cons.setCar(parseString(buffer));
+				current_cons = cons;
+				//console.log("nested list completed");
+				//console.log(current_cons.car().car().name());
+				//console.log(current_cons.cdr().name());
+				//console.log(buffer.contents());
+				console.log("After recourse:");
+				CL.printList(first_cons);
 			}
 			else {
-				console.log("Unexpected character '('.");
+				console.log("Unexpected character '('");
 				break;
 			}
 		}
-		// if the character is a right parentheses
+
+		// if the character is a right parentheses )
 		else if (current_char === ")") {
-			console.log("Right parentheses matched: " + current_char);
 			if (building === "symbol") {
 				// finished parsing symbol
-				console.log("Parsed symbol: " + token);
+
 				var symbol = CL.findSymbol(token);
-				console.log("Symbol object found: " + symbol["name"]); // try symbol.name
+				if (current_cons.is_nil()){
+					// this is the first object in the list
+					first_cons = CL.cons(symbol, CL.nil);
+					current_cons = first_cons;
+				} else {
+					// this is just another object in the list
+					console.log("Adding symbol: " + symbol.name());
+					var cons = CL.cons(symbol, CL.nil);
+					current_cons.setCdr(cons);
+					current_cons = cons;
+				}
+
 				token = "";
 				building = "none";
+
+				return first_cons; // finished parsing list
 			}
 			else if (building === "number") {
 				// finished parsing number
-				console.log("Parsed number: " + token);
 				token = "";
 				building = "none";
+
+				return first_cons; // finished parsing list
+			} else {
+				console.log("Unexpected \')\'");
+				break;
 			}
 		}
+
 		// if the character is a space
 		else if (current_char === " ") { // could add comma here
-			//console.log("Space matched.");
 			if (building === "symbol") {
 				// finished parsing symbol
-				//console.log("Parsed symbol: " + token);
-				var symbol = CL.findSymbol(token);
-				//console.log("Symbol object found: " + symbol["name"]); // try symbol.name
-				current_cons.setCar(symbol);
-				//var cons = CL.cons()
+				
+				var symbol = CL.findSymbol(token); // if not exists create? or only under certain circumstances? what in a let?
+				// must check if parsing list
+				if (current_cons.is_nil()){
+					// this is the first object in the list
+					first_cons = CL.cons(symbol, CL.nil);
+					current_cons = first_cons;
+				} else {
+					// this is just another object in the list
+					console.log("Adding symbol: " + symbol.name());
+					var cons = CL.cons(symbol, CL.nil)
+					current_cons.setCdr(cons);
+					current_cons = cons;
+				}
+				
 				token = "";
 				building = "none";
 			}
@@ -384,20 +434,18 @@ CL.parse = function parse(input) {
 				token = "";
 				building = "none";
 			}
+			// if anything else, ignore it
 		}
+
 		// if the character is a comma
 		else if (current_char === ",") {
 			// ignore, it's whitespace
 		}
+
 		// if the character is invalid
 		else {
 			console.log("Invalid character: " + current_char);
 			break;
-			//throw {
-			//	name: "InvalidCharacterException",
-			//	message: "Invalid character: " + current_char
-			//}
-
 		}
 	}
 }
