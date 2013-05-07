@@ -6,7 +6,21 @@
 //testParse();
 //testNestedParse();
 //testNestedParse2();
-testNestedParse3();
+//testNestedParse3();
+testParsingNumbers();
+
+function testParsingNumbers() {
+	CL.createSymbol("a");
+	CL.createSymbol("b");
+	CL.createSymbol("c");
+	CL.createSymbol("d");
+	CL.createSymbol("e");
+
+	var test_str = "(a b 3 d 54)";
+	var result = CL.parse(test_str);
+
+	CL.printList(result);
+}
 
 function testParse() {
 	CL.createSymbol("a");
@@ -107,8 +121,6 @@ function testNestedList() {
 }
 
 function testNestedList2() {
-
-	
 
 	var first = CL.cons(a, CL.nil);
 	var second = CL.cons(b, CL.nil);

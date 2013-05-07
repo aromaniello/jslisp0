@@ -1,47 +1,31 @@
+// main object
 var CL = {};
 
 // base object for others to inherit from
 CL.CLObject = {
-	is_nil: function () { // should change to camelcase?
-		return false;
-	},
-	is_symbol: function () {
-		return false;
-	},
-	is_number: function () {
-		return false
-	},
-	is_cons: function () {
-		return false;
-	},
-	is_function: function () {
-		return false;
-	},
-	type: function () {
-		return "CLObject";
-	},
-	name: function () {
-		return "CLObject";
-	}
-	// to string
+	is_nil: function () { return false; },
+	is_symbol: function () { return false },
+	is_number: function () { return false },
+	is_cons: function () { return false },
+	is_function: function () { return false	},
+	type: function () { return "CLObject" },
+	name: function () { return "CLObject" },
+	toString: function () { return "GenericCLObject" }
 }
 
-// prototype for function objects
+// create CL function prototype
 var CLF = Object.create(CL.CLObject);
 CLF.is_function = function () { return true; }; // remove ; if works
 CLF.type = function () { return "CLFunction"; };
 CL.CLFunction = CLF;
 
-CL.CLNumber = {
-	is_number: function () {
-		return true;
-	},
-	type: function () {
-		return "CLNumber";
-	}
-}
+// create CL number prototype
+var CLN = Object.create(CL.CLObject);
+CLN.is_number = function () { return true; };
+CLN.type = function () { return "CLNumber"; };
+CL.CLNumber = CLN;
 
-CL.toplevel = [];
+CL.toplevel = []; // or list?
 
 function displayObject(obj) {
 	console.log("Displaying object properties:");
@@ -50,22 +34,13 @@ function displayObject(obj) {
 	}
 }
 
+// create cons cell prototype
 var CLC = Object.create(CL.CLObject);
 CLC.is_cons = function () { return true };
 CLC.type = function () { return "CLCons" };
 CL.CLCons = CLC;
 
-/*
-CL.CLSymbol = {
-	is_symbol: function () {
-		return true;
-	},
-	type: function () {
-		return "CLSymbol";
-	}
-}
-*/
-
+// create symbol prototype
 var CLS = Object.create(CL.CLObject);
 CLS.is_symbol = function () { return true };
 CLS.type = function () { return "CLSymbol" };
@@ -109,7 +84,7 @@ CL.printSymbols = function () {
 }
 
 CL.createFunction = function () {
-	var func = Objec.create(CL.CLFunction);
+	var f = Objec.create(CL.CLFunction);
 }
 
 CL.printList = function (cons) {
@@ -157,10 +132,6 @@ CL.create = function () { // could have arguments the type and name, like CL.cre
 
 }
 
-CL.createFunction = function () {
-
-}
-
 CL.print = function (string) {
 	$("#terminal").append("<div>" + string + "</div>"); // try to take out from here
 }
@@ -170,8 +141,18 @@ CL.read = function (input) {
 	CL.parse(input);
 }
 
-CL.eval = function() {
+CL.eval = function(list) {
 
+}
+
+CL.createNumber = function (number) {
+
+	var num = number;
+
+	var o = Object.create(CL.CLNumber);
+	o.number = function () { return num };
+	o.toString = function () { return "CLNumber[" + num + "]" };
+	return o;
 }
 
 // NIL
@@ -270,7 +251,6 @@ CL.parse = function (input) {
 }
 
 CL.parseString = function parseString(buffer) {
-	 console.log("parseString called with buffer: " + buffer.contents());
 
 	var building = "none"
 	var token = ""
@@ -316,6 +296,7 @@ CL.parseString = function parseString(buffer) {
 			} else if (building === "symbol") {
 				// continue building symbol
 				token += current_char;
+
 			} else {
 				// error when building symbol
 				console.log("Unexpected letter \'" + current_char + "\' found when building: " + building);
@@ -339,31 +320,13 @@ CL.parseString = function parseString(buffer) {
 			if (building === "none" && !parsing_list) {
 				// begin new list
 				parsing_list = true;
-				
 
 			} else if (building === "none" && parsing_list) {
-				//console.log("nested list found");
-				//var remaining = input.substring(i);
-				//console.log("remaining substring: " + remaining);
-
-				//var a = parseString(remaining);
-				//current_cons.setCar(a.list_head);
-				console.log("Before recourse:");
-				CL.printList(first_cons);
-				console.log(current_cons.car().name());
-				buffer.prepend("("); //does it still work without this?
-				//console.log("starting new list");
-				//console.log(current_cons.car().name());
-				var cons = CL.cons(CL.nil, CL.nil);
+				// found nested list, parse it recursively
+				buffer.prepend("("); // necessary?
+				var cons = CL.cons(parseString(buffer), CL.nil);
 				current_cons.setCdr(cons);
-				cons.setCar(parseString(buffer));
 				current_cons = cons;
-				//console.log("nested list completed");
-				//console.log(current_cons.car().car().name());
-				//console.log(current_cons.cdr().name());
-				//console.log(buffer.contents());
-				console.log("After recourse:");
-				CL.printList(first_cons);
 			}
 			else {
 				console.log("Unexpected character '('");
@@ -377,13 +340,13 @@ CL.parseString = function parseString(buffer) {
 				// finished parsing symbol
 
 				var symbol = CL.findSymbol(token);
+
 				if (current_cons.is_nil()){
 					// this is the first object in the list
 					first_cons = CL.cons(symbol, CL.nil);
 					current_cons = first_cons;
 				} else {
 					// this is just another object in the list
-					console.log("Adding symbol: " + symbol.name());
 					var cons = CL.cons(symbol, CL.nil);
 					current_cons.setCdr(cons);
 					current_cons = cons;
@@ -396,6 +359,18 @@ CL.parseString = function parseString(buffer) {
 			}
 			else if (building === "number") {
 				// finished parsing number
+
+				var num = CL.createNumber(parseInt(token));
+
+				if (current_cons.is_nil()){
+					first_cons = CL.cons(num, CL.nil);
+					current_cons = first_cons;
+				} else {
+					var cons = CL.cons(num, CL.nil)
+					current_cons.setCdr(cons);
+					current_cons = cons;
+				}
+
 				token = "";
 				building = "none";
 
@@ -419,7 +394,6 @@ CL.parseString = function parseString(buffer) {
 					current_cons = first_cons;
 				} else {
 					// this is just another object in the list
-					console.log("Adding symbol: " + symbol.name());
 					var cons = CL.cons(symbol, CL.nil)
 					current_cons.setCdr(cons);
 					current_cons = cons;
@@ -430,7 +404,18 @@ CL.parseString = function parseString(buffer) {
 			}
 			else if (building === "number") {
 				// finished parsing number
-				console.log("Parsed number: " + token);
+
+				var num = CL.createNumber(parseInt(token));
+
+				if (current_cons.is_nil()){
+					first_cons = CL.cons(num, CL.nil);
+					current_cons = first_cons;
+				} else {
+					var cons = CL.cons(num, CL.nil)
+					current_cons.setCdr(cons);
+					current_cons = cons;
+				}
+
 				token = "";
 				building = "none";
 			}
