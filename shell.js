@@ -4,10 +4,17 @@ $(function () {
 		if (e.which === 13) {
 			e.preventDefault();
 			var input = $("#prompt-inner").text();
-			CL.print("<span style=\"margin-right:10px;\">></span>" + input);
-			CL.read(input);
-			var output = "";
-			CL.print(output);
+			CL.printString("<span style=\"margin-right:10px;\">></span>" + input);
+			//console.log("\"" + input + "\"");
+
+			var parsed_list = CL.read(input);
+			//console.log(typeof parsed_list === 'undefined');
+			//console.log(parsed_list.toString());
+			//CL.printList(parsed_list);
+
+			var evaled_list = CL.eval(parsed_list);
+			CL.print(evaled_list);
+
 			$("#prompt-inner").text("");
 		}
 	});

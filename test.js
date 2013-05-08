@@ -7,7 +7,25 @@
 //testNestedParse();
 //testNestedParse2();
 //testNestedParse3();
-testParsingNumbers();
+//testParsingNumbers();
+//testParsingOperators();
+//testEval1();
+
+function testEval1() {
+	var test_str = "(+ 5 4)";
+	var parsed_list = CL.parse(test_str);
+	console.log(parsed_list);
+	var result = CL.eval(parsed_list);
+	
+	console.log(CL.printCLObject(result));
+}
+
+function testParsingOperators() {
+	var test_str = "(+ 5 3)";
+	var result = CL.parse(test_str);
+
+	CL.printList(result);
+}
 
 function testParsingNumbers() {
 	CL.createSymbol("a");
