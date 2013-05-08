@@ -4,11 +4,12 @@ $(function () {
 		if (e.which === 13) {
 			e.preventDefault();
 			var input = $("#prompt-inner").text();
-			CL.printString("<span style=\"margin-right:10px;\">></span>" + input);
+			printToConsole("<span style=\"margin-right:10px;\">></span>" + input);
 			
-			var parsed_list = CL.read(input);
-			var evaled_list = CL.eval(parsed_list);
-			CL.print(evaled_list);
+			var parsed_list = CL.read(input); // read
+			var evaled_list = CL.eval(parsed_list); // eval
+
+			printToConsole(CL.print(evaled_list)); // print
 
 			$("#prompt-inner").text("");
 		}
@@ -21,5 +22,9 @@ $(function () {
 	$("body").click(function () {
 		$("#prompt-inner").focus();
 	});
+
+	var printToConsole = function printToConsole(string) {
+		$("#terminal").append("<div>" + string + "</div>");
+	};
 
 });

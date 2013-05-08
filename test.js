@@ -11,6 +11,8 @@
 //testParsingOperators();
 //testEval1();
 
+/*** tests ***/
+
 function testEval1() {
 	var test_str = "(+ 5 4)";
 	var parsed_list = CL.parse(test_str);
@@ -165,4 +167,12 @@ function testNestedList2() {
 	first_b.setCdr(second_b);
 
 	CL.printList(first);
+}
+
+/*** utility functions ***/
+
+CL.printSymbols = function () {
+	for (var symbol_name in CL.symbols) {
+		console.log("Symbol: " + CL.symbols[symbol_name]);
+	}
 }

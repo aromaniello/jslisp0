@@ -145,3 +145,72 @@ var divide_function = CL.createFunction(function (args) {
 });
 
 CL.symbols["/"].set_function(divide_function);
+
+// 'atom' function
+var atom_function = CL.createFunction(function (args) {
+
+	if (!isArray2(args)) {
+		console.log("Error: the function 'atom' was expecting an array.");
+		return false;
+	}
+
+	if (args.length !== 1) { // check if can pass more
+		console.log("Error: incorrect number of arguments for function 'atom': " + args.length);
+		return false;
+	}
+
+	if (CL.isCLObject(args[0]) && !args[0].is_cons()) {
+		return CL.t;
+	} else {
+		return CL.nil;
+	}
+
+});
+
+CL.symbols["atom"].set_function(atom_function);
+
+// 'quote' function
+var quote_function = CL.createFunction(function (args) {
+
+	if (!isArray2(args)) {
+		console.log("Error: the function 'quote' was expecting an array.");
+		return false;
+	}
+
+	if (args.length !== 1) { // check if can pass more
+		console.log("Error: incorrect number of arguments for function 'quote': " + args.length);
+		return false;
+	}
+
+	if (!CL.isCLObject(args[0])) {
+		console.log("Error: the object passed to 'quote' is not a valid CL object.");
+	}
+
+	// do nothing with the argument, return it as-is
+	return args[0];
+
+	// TODO: need to quote nested structures too!
+
+});
+
+CL.symbols["quote"].set_function(quote_function);
+
+// 'setf' function
+var setf_function = CL.createFunction(function (args) {
+
+	if (!isArray2(args)) {
+		console.log("Error: the function 'setf' was expecting an array.");
+		return false;
+	}
+
+	/*
+	if (args.length % 2 === 0) { //?
+		console.log("Error: incorrect number of arguments for function 'quote': " + args.length);
+		return false;
+	} */
+
+	CL.findSymbol(args[0]).set_value(args[1]);
+
+	// ...
+
+});

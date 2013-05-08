@@ -1,3 +1,5 @@
+/*** DEFINE CORE OBJECTS ***/
+
 // main object
 var CL = {};
 
@@ -14,54 +16,53 @@ CL.CLObject = {
 	toString: function () { return "CLObject" }
 }
 
-CL.isCLObject = function (obj) {
-	return CL.CLObject.isPrototypeOf(obj);
-};
-
-// create CL function prototype
+// CL function prototype
 var CLF = Object.create(CL.CLObject);
-CLF.is_function = function () { return true; }; // remove ; if works
-CLF.type = function () { return "CLFunction"; };
+CLF.is_function = function () { return true };
+CLF.type = function () { return "CLFunction" };
 CL.CLFunction = CLF;
 
-// create CL number prototype
+// CL number prototype
 var CLN = Object.create(CL.CLObject);
 CLN.is_number = function () { return true; };
 CLN.type = function () { return "CLNumber"; };
 CL.CLNumber = CLN;
 
-CL.toplevel = []; // or list?
-
-function displayObject(obj) {
-	console.log("Displaying object properties:");
-	for (a in obj) {
-		console.log(a);
-	}
-}
-
-/*
-Can I do soemthing like this:?
-CL.CLCons = {
-	is_cons: ...
-	type: ...
-}
-CL.CLCons.prototype = CLObject
-*/
-
-// create cons cell prototype
+// cons cell prototype
 var CLC = Object.create(CL.CLObject);
 CLC.is_cons = function () { return true };
 CLC.type = function () { return "CLCons" };
 CL.CLCons = CLC;
 
-// create symbol prototype
+// symbol prototype
 var CLS = Object.create(CL.CLObject);
 CLS.is_symbol = function () { return true };
 CLS.type = function () { return "CLSymbol" };
 CL.CLSymbol = CLS;
 
-// namespace?
-CL.symbols = {}
+CL.symbols = {}; // imp. namespaces?
+
+CL.toplevel = []; // or list?
+
+// NIL
+var n = Object.create(CL.CLObject); // il
+n.is_nil = function () { return true };
+n.is_not_nil = function () { return false };
+n.name = function () { return "nil" }; // need? could remove
+n.toString = function () { return "NIL" };
+n.is_symbol = function () { return true }; // TODO: implement this correctly
+CL.nil = n;
+CL.symbols["nil"] = CL.nil;
+
+// T
+var t = Object.create(CL.CLObject);
+t.is_t = function () { return true };
+t.toString = function () { return "T" };
+t.is_symbol = function () { return true }; // TODO: implement this correctly
+CL.t = t;
+CL.symbols["t"] = CL.t;
+
+/*** DEFINE CONSTRUCTORS FOR CL OBJECTS ***/
 
 // create a new symbol
 CL.createSymbol = function (symbol_name) {
@@ -99,7 +100,6 @@ CL.createSymbol = function (symbol_name) {
 
 		sym.is_symbol = function () { return true };
 		sym.toString = function () { return sym_name.toUpperCase() };
-		sym.toStringV= function () { return "CLSymbol[" + sym_name + "]" };
 
 		CL.symbols[symbol_name] = sym;
 		return sym;
@@ -111,16 +111,7 @@ CL.createSymbol = function (symbol_name) {
 	}
 }
 
-CL.printSymbols = function () {
-	for (symbol_name in CL.symbols) {
-		console.log("Symbol: " + CL.symbols[symbol_name]);
-	}
-}
-
-// I could actually do without the prototypes -> to avoid repetition!
-// do I want to though?
-
-// create a new function object
+// create a new function
 CL.createFunction = function (fun) {
 
 	var assoc_func = CL.nil;
@@ -150,94 +141,102 @@ CL.createFunction = function (fun) {
 		return assoc_func(args);
 	};
 
+	f.toString = function () {
+		return "CLFunction";
+	};
+
 	return f;
 }
 
-// print a list to the console
-CL.printList = function (cons) {
-	console.log(CL.listToString(cons));	
-	//obj.toString();
+// create a new number object
+CL.createNumber = function (number) {
+
+	var num = number;
+
+	var n = Object.create(CL.CLNumber);
+	n.number = function () { return num };
+	n.toString = function () { return num + "" };
+
+	return n;
 }
 
-CL.printCLObject = function (obj) {
-	
-	if (typeof obj === 'undefined') {
-		console.log("Error: undefined object passed to printCLObject");
-		return "";
-	}
+// convenience function, see if needed
+CL.create = function (type, arg) {
 
-	if (obj.is_symbol()) { //obj.hasOwnProperty("is_symbol") && 
-		return obj.toString();
-	} else if (obj.is_cons()) { // obj.hasOwnProperty("is_cons") && 
-		 return CL.listToString(obj);
-	} else if (obj.is_number()) { // obj.hasOwnProperty("is_number") && 
-		 return obj.toString();
+	if (type === "symbol") {
+		// TODO: check type of arg
+		return CL.createSymbol(arg);
+	} else if (type === "function") {
+		// TODO: check type of arg
+		return CL.createFunction(arg);
+	} else if (type === 'number') {
+		// TODO: check type of arg
+		return CL.createNumber(arg);
 	} else {
-		return "Error: unknown object type.";
+		console.log("Error: invalid type passed to 'create' function.");
+		return false;
 	}
-}
 
-// turn list into a string
-CL.listToString = function listToString(cons) {
-	var str = "";
-	if (cons.is_cons()) {
-		var current_cons = cons;
-		var its = 0;
-		str += "("
-		while (true) {
-			if (current_cons.is_nil()) {
-				str += ")";
-				break;
-			} else if (its > 200) { // in case there is no nil
-				console.log("Reached max iterations: " + its);
-				break;
-			} else {
-				//console.log(current_cons.toString());
-				if (current_cons.car().is_cons()) {
-					console.log("Recursive call in listToString");
-					str += listToString(current_cons.car()); // recursive call
-				} else {
-					if (str.substring(str.length-1) === "(") {
-						str += current_cons.car().toString();
-					} else {
-						str += " " + current_cons.car().toString();		
-					}
-				}
-				current_cons = current_cons.cdr();
-			}
-			its += 1;
-		}
-		return str;
-	} else {
-		console.log("Error: argument to listToString is not a cons cell.");
-		return "";
+};
+
+// create a new cons cell
+CL.cons = function cons(first, second) {
+
+	var a = first;
+	var b = second;
+
+	// if arguments are undefined set them to nil (test!)
+	if (!first)  a = CL.nil;
+	if (!second) b = CL.nil;
+
+	var c = Object.create(CL.CLCons);
+
+	c.car = function () { return a };
+	c.cdr = function () { return b };
+
+	// could I do without setters?
+	c.setCar = function (new_car) {
+		a = new_car;
+	};
+
+	c.setCdr = function (new_cdr) {
+		b = new_cdr;
 	}
-}
 
-// to create CL objects
-// for example functions would be of type CLFunction
-// and they themselves have the JS function and know how to call it exactly
-CL.create = function () { // could have arguments the type and name, like CL.create("function","setf")
+	c.toString = function () { //test this
+		return CL.listToString(c);
+	}
+
+	return c;
 
 };
 
-CL.printString = function (string) {
-	$("#terminal").append("<div>" + string + "</div>"); // try to take out from here
+/*** UTILITIES ***/
+
+CL.isCLObject = function (obj) {
+	return CL.CLObject.isPrototypeOf(obj);
 };
 
-CL.print = function (obj) {
-	CL.printString(CL.printCLObject(obj));
+// find an existing symbol or create it
+CL.findSymbol = function (sym) {
+	if (CL.symbols.hasOwnProperty(sym)) {
+		return CL.symbols[sym];
+	}
+	else {
+		console.log("Symbol not found: " + sym + ". Creating it.");
+		return CL.createSymbol(sym);
+	}
 };
 
-CL.read = function (input) {
-	return CL.parse(input);
-};
+/*** CORE EVAL FUNCTION ***/
 
 CL.eval = function eval(obj, quoted) {
 
 	if (!obj && typeof obj === 'undefined') {
 		console.log("Error: object passed to eval is undefined.");
 		return false;
+	} else if (!CL.isCLObject(obj)) {
+		console.log("Error: object passed to eval is not a valid CL object.");
 	}
 
 	// a number evaluates to itself
@@ -248,7 +247,7 @@ CL.eval = function eval(obj, quoted) {
 	} else if (obj.is_symbol()) {
 		return obj.value();
 
-	// nil evaluates to ?
+	// nil evaluates to itself
 	} else if (obj.is_nil()) {
 		return CL.nil;
 
@@ -299,85 +298,26 @@ CL.eval = function eval(obj, quoted) {
 	}
 }
 
-// create a new number object
-CL.createNumber = function (number) {
+/*** READING AND PARSING FUNCTIONS ***/
 
-	var num = number;
-
-	var n = Object.create(CL.CLNumber);
-	n.number = function () { return num };
-	n.toString = function () { return num + "" };
-	n.toStringV = function () { return "CLNumber[" + num + "]" };
-
-	return n;
-}
-
-// define the NIL object
-var n = Object.create(CL.CLObject); // il
-n.is_nil = function () { return true };
-n.is_not_nil = function () { return false };
-n.name = function () { return "nil" };
-CL.nil = n;
-CL.symbols["nil"] = CL.nil;
-CL.is_nil = function (obj) {
-	if (obj === CL.nil) { return true; }
-	else { return false; }
-};
-CL.is_not_nil = function (obj) { return !CL.is_nil(obj); };
-
-// create a new cons cell
-CL.cons = function cons(first, second) {
-
-	var a = first;
-	var b = second;
-
-	// if arguments are undefined set them to nil (test!)
-	if (!first)  a = CL.nil;
-	if (!second) b = CL.nil;
-
-	var c = Object.create(CL.CLCons);
-
-	c.car = function () { return a };
-	c.cdr = function () { return b };
-
-	// could I do without setters?
-	c.setCar = function (new_car) {
-		a = new_car;
-	};
-
-	c.setCdr = function (new_cdr) {
-		b = new_cdr;
-	}
-
-	c.toString = function () { //test this
-		return CL.listToString(c);
-	}
-
-	return c;
-
-};
-
-// find an existing symbol or create it
-CL.findSymbol = function (sym) {
-	if (CL.symbols.hasOwnProperty(sym)) {
-		return CL.symbols[sym];
-	}
-	else {
-		console.log("Symbol not found: " + sym + ". Creating it.");
-		return CL.createSymbol(sym);
-	}
+CL.read = function (input) {
+	return CL.parse(input);
 };
 
 // create a buffer for the parser
 CL.createBuffer = function (input) {
 
-	var buffer = input; // copy or reference?
+	if (typeof input !== 'string') {
+		console.log("Error: argument to createBuffer is not a string.");
+		return false;
+	}
+
+	var buffer = input;
 
 	return {
 		consume: function () {
 			var c = buffer.substr(0,1); // get first character from buffer
 			buffer = buffer.substring(1); // remove first character from buffer
-			//console.log(buffer);
 			return c;
 		},
 		is_empty: function () {
@@ -402,6 +342,8 @@ CL.parse = function (input) {
 // parse a string and turn it into a list
 CL.parseString = function parseString(buffer) {
 
+	// TODO: refactor with an internal function
+
 	var building = "none"
 	var token = ""
 	var first_cons = CL.nil;
@@ -411,6 +353,17 @@ CL.parseString = function parseString(buffer) {
 	var parse_number = /^\d+$/
 	var parse_letter = /^[a-z]$/i
 	var parse_operators = /^[\+\-*\/=]$/
+
+	var newCons = function (obj) {
+		if (current_cons.is_nil()) {
+			first_cons = CL.cons(obj, CL.nil);
+			current_cons = first_cons;
+		} else {
+			var cons = CL.cons(obj, CL.nil)
+			current_cons.setCdr(cons);
+			current_cons = cons;
+		}
+	}
 
 	var i; //?
 	for (i = 0; i < 200; i++) { // can do while(true), but limiting iterations just in case for now
@@ -484,7 +437,6 @@ CL.parseString = function parseString(buffer) {
 			} else if (building === "none" && parsing_list) {
 				// found nested list, parse it recursively
 				buffer.prepend("("); // necessary?
-				//console.log("Calling function recursively");
 				var cons = CL.cons(parseString(buffer), CL.nil); // recursive call
 				current_cons.setCdr(cons);
 				current_cons = cons;
@@ -596,8 +548,54 @@ CL.parseString = function parseString(buffer) {
 			console.log("Invalid character: " + current_char);
 			break;
 		}
+	}
+}
 
-		//console.log("buffer: " + buffer.contents());
-		//console.log(CL.printList(first_cons));
+/*** PRINTING FUNCTIONS ***/
+
+CL.print = function print(obj) {
+
+	if (!CL.isCLObject(obj)) {
+		return "[invalid JavaScript object]";
+	} else {
+		return obj.toString();
+	}
+
+};
+
+// turn list into a string
+CL.listToString = function listToString(cons) {
+	var str = "";
+	if (cons.is_cons()) {
+		var current_cons = cons;
+		var its = 0;
+		str += "("
+		while (true) {
+			if (current_cons.is_nil()) {
+				str += ")";
+				break;
+			} else if (its > 200) { // in case there is no nil
+				console.log("Reached max iterations: " + its);
+				break;
+			} else {
+				//console.log(current_cons.toString());
+				if (current_cons.car().is_cons()) {
+					console.log("Recursive call in listToString");
+					str += listToString(current_cons.car()); // recursive call
+				} else {
+					if (str.substring(str.length-1) === "(") {
+						str += current_cons.car().toString();
+					} else {
+						str += " " + current_cons.car().toString();		
+					}
+				}
+				current_cons = current_cons.cdr();
+			}
+			its += 1;
+		}
+		return str;
+	} else {
+		console.log("Error: argument to listToString is not a cons cell.");
+		return "";
 	}
 }
