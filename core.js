@@ -14,6 +14,10 @@ CL.CLObject = {
 	toString: function () { return "CLObject" }
 }
 
+CL.isCLObject = function (obj) {
+	return CL.CLObject.isPrototypeOf(obj);
+};
+
 // create CL function prototype
 var CLF = Object.create(CL.CLObject);
 CLF.is_function = function () { return true; }; // remove ; if works
@@ -94,7 +98,8 @@ CL.createSymbol = function (symbol_name) {
 		sym.has_function = function () { return !sym_function.is_nil() };
 
 		sym.is_symbol = function () { return true };
-		sym.toString = function () { return "CLSymbol[" + sym_name + "]" };
+		sym.toString = function () { return sym_name.toUpperCase() };
+		sym.toStringV= function () { return "CLSymbol[" + sym_name + "]" };
 
 		CL.symbols[symbol_name] = sym;
 		return sym;
@@ -119,6 +124,8 @@ CL.printSymbols = function () {
 CL.createFunction = function (fun) {
 
 	var assoc_func = CL.nil;
+
+	if (typeof fun === 'function') assoc_func = fun;
 
 	var f = Object.create(CL.CLFunction);
 
@@ -153,7 +160,12 @@ CL.printList = function (cons) {
 }
 
 CL.printCLObject = function (obj) {
-	//console.log(obj.toString());
+	
+	if (typeof obj === 'undefined') {
+		console.log("Error: undefined object passed to printCLObject");
+		return "";
+	}
+
 	if (obj.is_symbol()) { //obj.hasOwnProperty("is_symbol") && 
 		return obj.toString();
 	} else if (obj.is_cons()) { // obj.hasOwnProperty("is_cons") && 
@@ -245,8 +257,6 @@ CL.eval = function eval(obj, quoted) {
 		// if the list is unquoted, evaluate normally
 		if (!quoted) {
 
-			console.log("unquoted");
-
 			if (!obj.car().is_symbol()) {
 				console.log("Error: first element of list does not contain a symbol.");
 				return false;
@@ -294,10 +304,12 @@ CL.createNumber = function (number) {
 
 	var num = number;
 
-	var o = Object.create(CL.CLNumber);
-	o.number = function () { return num };
-	o.toString = function () { return "CLNumber[" + num + "]" };
-	return o;
+	var n = Object.create(CL.CLNumber);
+	n.number = function () { return num };
+	n.toString = function () { return num + "" };
+	n.toStringV = function () { return "CLNumber[" + num + "]" };
+
+	return n;
 }
 
 // define the NIL object
@@ -314,7 +326,7 @@ CL.is_nil = function (obj) {
 CL.is_not_nil = function (obj) { return !CL.is_nil(obj); };
 
 // create a new cons cell
-CL.cons = function (first, second) {
+CL.cons = function cons(first, second) {
 
 	var a = first;
 	var b = second;
@@ -343,7 +355,7 @@ CL.cons = function (first, second) {
 
 	return c;
 
-}
+};
 
 // find an existing symbol or create it
 CL.findSymbol = function (sym) {
@@ -354,7 +366,7 @@ CL.findSymbol = function (sym) {
 		console.log("Symbol not found: " + sym + ". Creating it.");
 		return CL.createSymbol(sym);
 	}
-}
+};
 
 // create a buffer for the parser
 CL.createBuffer = function (input) {
@@ -524,8 +536,11 @@ CL.parseString = function parseString(buffer) {
 				building = "none";
 
 				return first_cons; // finished parsing list
+
+			} else if (building === "none" && parsing_list) {
+				return first_cons;
 			} else {
-				console.log("Unexpected \')\'");
+				console.log("Error: unexpected \')\'");
 				break;
 			}
 		}
