@@ -5,62 +5,58 @@ var CL = {};
 
 // base object for others to inherit from
 CL.CLObject = {
-	is_nil: function () { return false },
-	is_not_nil: function () { return true },
-	is_symbol: function () { return false },
-	is_number: function () { return false },
-	is_cons: function () { return false },
+	is_nil:      function () { return false },
+	is_not_nil:  function () { return true  },
+	is_t:        function () { return false },
+	is_symbol:   function () { return false },
+	is_number:   function () { return false },
+	is_cons:     function () { return false },
 	is_function: function () { return false	},
-	type: function () { return "CLObject" },
-	name: function () { return "CLObject" },
-	toString: function () { return "CLObject" }
+	type:        function () { return "CLObject" },
+	toString:    function () { return "[CLObject]" }
 }
 
 // CL function prototype
-var CLF = Object.create(CL.CLObject);
-CLF.is_function = function () { return true };
-CLF.type = function () { return "CLFunction" };
-CL.CLFunction = CLF;
+CL.CLFunction             = Object.create(CL.CLObject);
+CL.CLFunction.is_function = function () { return true };
+CL.CLFunction.type        = function () { return "CLFunction" };
 
 // CL number prototype
-var CLN = Object.create(CL.CLObject);
-CLN.is_number = function () { return true; };
-CLN.type = function () { return "CLNumber"; };
-CL.CLNumber = CLN;
+CL.CLNumber           = Object.create(CL.CLObject);
+CL.CLNumber.is_number = function () { return true; };
+CL.CLNumber.type      = function () { return "CLNumber"; };
 
 // cons cell prototype
-var CLC = Object.create(CL.CLObject);
-CLC.is_cons = function () { return true };
-CLC.type = function () { return "CLCons" };
-CL.CLCons = CLC;
+CL.CLCons         = Object.create(CL.CLObject);
+CL.CLCons.is_cons = function () { return true };
+CL.CLCons.type    = function () { return "CLCons" };
 
 // symbol prototype
-var CLS = Object.create(CL.CLObject);
-CLS.is_symbol = function () { return true };
-CLS.type = function () { return "CLSymbol" };
-CL.CLSymbol = CLS;
+CL.CLSymbol           = Object.create(CL.CLObject);
+CL.CLSymbol.is_symbol = function () { return true };
+CL.CLSymbol.type      = function () { return "CLSymbol" };
 
+// collection of all symbols
 CL.symbols = {}; // imp. namespaces?
 
 CL.toplevel = []; // or list?
 
 // NIL
-var n = Object.create(CL.CLObject); // il
-n.is_nil = function () { return true };
-n.is_not_nil = function () { return false };
-n.name = function () { return "nil" }; // need? could remove
-n.toString = function () { return "NIL" };
-n.is_symbol = function () { return true }; // TODO: implement this correctly
-CL.nil = n;
-CL.symbols["nil"] = CL.nil;
+CL.nil            = Object.create(CL.CLObject);
+CL.nil.is_nil     = function () { return true  };
+CL.nil.is_not_nil = function () { return false };
+CL.nil.toString   = function () { return "NIL" };
+CL.nil.is_symbol  = function () { return true  }; // TODO: implement this correctly
+
+CL.symbols["nil"] = CL.nil; // should it be a symbol?
 
 // T
-var t = Object.create(CL.CLObject);
-t.is_t = function () { return true };
-t.toString = function () { return "T" };
-t.is_symbol = function () { return true }; // TODO: implement this correctly
-CL.t = t;
-CL.symbols["t"] = CL.t;
+CL.t           = Object.create(CL.CLObject);
+CL.t.is_t      = function () { return true };
+CL.t.toString  = function () { return "T"  };
+CL.t.is_symbol = function () { return true }; // TODO: implement this correctly
+
+CL.symbols["t"] = CL.t; // should it be a symbol?
 
 /*** DEFINE CONSTRUCTORS FOR CL OBJECTS ***/
 
@@ -116,7 +112,12 @@ CL.createFunction = function (fun) {
 
 	var assoc_func = CL.nil;
 
-	if (typeof fun === 'function') assoc_func = fun;
+	if (typeof fun === 'function') { 
+		assoc_func = fun; 
+	} else {
+		console.log("Error: object passed to createFunction is not a valid JavaScript function.");
+		return false;
+	}
 
 	var f = Object.create(CL.CLFunction);
 
@@ -132,7 +133,7 @@ CL.createFunction = function (fun) {
 		return assoc_func;
 	};
 
-	f.callf = function (args) { // search if can use "call"
+	f.call = function (args) {
 		// check the argument is an array
 		if (!(args && typeof args === 'object' && args.constructor === Array)) {
 			console.log("Error: argument to the function is not an array;");
@@ -284,7 +285,7 @@ CL.eval = function eval(obj, quoted) {
 					current_cons = current_cons.cdr();
 				}
 
-				return func.callf(args);
+				return func.call(args);
 			}
 			
 		// if the list is quoted, do not evaluate the first element as a function
@@ -342,8 +343,6 @@ CL.parse = function (input) {
 // parse a string and turn it into a list
 CL.parseString = function parseString(buffer) {
 
-	// TODO: refactor with an internal function
-
 	var building = "none"
 	var token = ""
 	var first_cons = CL.nil;
@@ -354,21 +353,22 @@ CL.parseString = function parseString(buffer) {
 	var parse_letter = /^[a-z]$/i
 	var parse_operators = /^[\+\-*\/=]$/
 
-	var newCons = function (obj) {
+	var attachCons = function attachCons(obj) {
 		if (current_cons.is_nil()) {
+			// first object in the list
 			first_cons = CL.cons(obj, CL.nil);
 			current_cons = first_cons;
 		} else {
+			// another object in the list, so attach to the last one
 			var cons = CL.cons(obj, CL.nil)
 			current_cons.setCdr(cons);
 			current_cons = cons;
 		}
 	}
 
-	var i; //?
-	for (i = 0; i < 200; i++) { // can do while(true), but limiting iterations just in case for now
+	var i;
+	for (i = 0; i < 1000; i++) { // loop iterations to prevent an infinite loop, might remove afterwards
 
-		//var current_char = input.substring(i,i+1); // extract a single character
 		if (buffer.is_empty()) {
 			console.log("Error: the buffer run out and a list was left incomplete."); // could use this to do multi-line expressions
 			break;
@@ -411,16 +411,7 @@ CL.parseString = function parseString(buffer) {
 		// if the character is an operator [+-*/]
 		else if (parse_operators.test(current_char)) {
 			if (building === "none") {
-				var symbol = CL.findSymbol(current_char);
-
-				if (current_cons.is_nil()){
-					first_cons = CL.cons(symbol, CL.nil);
-					current_cons = first_cons;
-				} else {
-					var cons = CL.cons(symbol, CL.nil)
-					current_cons.setCdr(cons);
-					current_cons = cons;
-				}
+				attachCons(CL.findSymbol(current_char));
 			}
 			else {
 				console.log("Unexpected character: " + current_char);
@@ -452,18 +443,7 @@ CL.parseString = function parseString(buffer) {
 			if (building === "symbol") {
 				// finished parsing symbol
 
-				var symbol = CL.findSymbol(token);
-
-				if (current_cons.is_nil()){
-					// this is the first object in the list
-					first_cons = CL.cons(symbol, CL.nil);
-					current_cons = first_cons;
-				} else {
-					// this is just another object in the list
-					var cons = CL.cons(symbol, CL.nil);
-					current_cons.setCdr(cons);
-					current_cons = cons;
-				}
+				attachCons(CL.findSymbol(token));
 
 				token = "";
 				building = "none";
@@ -473,16 +453,7 @@ CL.parseString = function parseString(buffer) {
 			else if (building === "number") {
 				// finished parsing number
 
-				var num = CL.createNumber(parseInt(token));
-
-				if (current_cons.is_nil()) {
-					first_cons = CL.cons(num, CL.nil);
-					current_cons = first_cons;
-				} else {
-					var cons = CL.cons(num, CL.nil)
-					current_cons.setCdr(cons);
-					current_cons = cons;
-				}
+				attachCons(CL.createNumber(parseInt(token)));
 
 				token = "";
 				building = "none";
@@ -497,23 +468,12 @@ CL.parseString = function parseString(buffer) {
 			}
 		}
 
-		// if the character is a space
-		else if (current_char === " ") { // could add comma here
+		// if the character is a space or comma
+		else if (current_char === " " || current_char === ",") {
 			if (building === "symbol") {
 				// finished parsing symbol
-				
-				var symbol = CL.findSymbol(token);
-				// must check if parsing list
-				if (current_cons.is_nil()){
-					// this is the first object in the list
-					first_cons = CL.cons(symbol, CL.nil);
-					current_cons = first_cons;
-				} else {
-					// this is just another object in the list
-					var cons = CL.cons(symbol, CL.nil)
-					current_cons.setCdr(cons);
-					current_cons = cons;
-				}
+
+				attachCons(CL.findSymbol(token));
 				
 				token = "";
 				building = "none";
@@ -521,26 +481,12 @@ CL.parseString = function parseString(buffer) {
 			else if (building === "number") {
 				// finished parsing number
 
-				var num = CL.createNumber(parseInt(token));
-
-				if (current_cons.is_nil()){
-					first_cons = CL.cons(num, CL.nil);
-					current_cons = first_cons;
-				} else {
-					var cons = CL.cons(num, CL.nil)
-					current_cons.setCdr(cons);
-					current_cons = cons;
-				}
+				attachCons(CL.createNumber(parseInt(token)));
 
 				token = "";
 				building = "none";
 			}
 			// if anything else, ignore it
-		}
-
-		// if the character is a comma
-		else if (current_char === ",") {
-			// ignore, it's whitespace
 		}
 
 		// if the character is invalid
